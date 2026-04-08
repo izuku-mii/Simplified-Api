@@ -23,7 +23,7 @@
                 
                 const responseData = {
                     statusCode: statusCode,
-                    creator: '@rynxzyy',
+                    creator: '@oota_asik_sendiri',
                     ...data
                 };
                 
