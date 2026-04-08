@@ -41,6 +41,12 @@
     console.log('');
     logger.ready(`Loaded ${allEndpoints.reduce((total, category) => total + category.items.length, 0)} endpoints`);
     
+    app.get('/endpoint', async (req, res) => {
+        res.status(200).json({
+            endpoints: allEndpoints
+        });
+    });
+
     app.get('/', async (req, res) => {
         res.status(200).json({
             endpoints: allEndpoints
