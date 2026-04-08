@@ -6,7 +6,6 @@ const upload = multer({
 
 module.exports = {
     category: 'post',
-    post: true,
     path: true,
     paramsFile: ["image"],
     async run(req, res) {
