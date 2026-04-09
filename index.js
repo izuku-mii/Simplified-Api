@@ -11,19 +11,21 @@
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
     app.use(require('./lib/logApiRequest'));
-    app.use('/assets', express.static(path.join(process.cwd(), 'assets')));
+    app.use('/assets', express.static(path.join(process.cwd(), 'assent')));
     app.use((req, res, next) => {
         const originalJson = res.json;
         res.json = function (data) {
             if (data && typeof data === 'object') {
                 const statusCode = res.statusCode || 200;
-                
+                const fetchSet = await fetch('/assets/setting.json')
+                const { author } = await fetchSet.json()
                 const responseData = {
+                    status: true,
                     statusCode: statusCode,
-                    creator: '@oota_asik_sendiri',
-                    ...data
+                    creator: author,
+                    ...data,
+                    timestamp: new Date().toISOString()
                 };
-                
                 return originalJson.call(this, responseData);
             }
             return originalJson.call(this, data);
