@@ -58,15 +58,15 @@
     });
     app.use((req, res, next) => {
         logger.info(`404: ${req.method} ${req.path}`);
-        res.status(404).json({
-            error: 'Huh??'
-        })
+        res.sendFile(
+            path.join(process.cwd(), 'html', '400.html')
+        )
     });
     app.use((err, req, res, next) => {
         logger.error(`500: ${err.message}`);
-        res.status(500).json({
-            error: 'Huh??'
-        })
+        res.sendFile(
+            path.join(process.cwd(), 'html', '500.html')
+        )
     });
     app.listen(PORT, () => {
         console.log('');
