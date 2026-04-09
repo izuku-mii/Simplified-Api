@@ -352,96 +352,90 @@ footer{background:var(--card);border-top:1px solid var(--border2);position:relat
 
 <script>
 /* ══ DATA */
-const jsonEnd = await fetch('/endpoint');
-const { endpoints } = await jsonEnd.json();
-const API = endpoints
-/* ══ BUILD LIST */
-const listEl = document.getElementById('ep-list');
+let API = [];
 let lastJson = null;
 let sheetIdx = 0;
 
-API.forEach(function(cat, ci){
-  const card = document.createElement('div');
-  card.className = 'card a'+(ci+2 <= 3 ? ci+2 : 3);
+/* ══ HELPER */
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function reEsc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
-  const num = String(ci+1).padStart(2,'0');
-  card.innerHTML =
-    '<div class="card-head">'+
-      '<div class="card-label"><span class="label-num">'+num+'</span> '+cat.name+'</div>'+
-    '</div>'+
-    '<div class="card-body" id="cat-body-'+ci+'"></div>';
-  listEl.appendChild(card);
-
-  const body = card.querySelector('#cat-body-'+ci);
-  cat.items.forEach(function(item){
-    const qi = item.path.indexOf('?');
-    const pm = qi!==-1 ? item.path.slice(0,qi) : item.path;
-    const qs = qi!==-1 ? item.path.slice(qi) : '';
-
-    const row = document.createElement('div');
-    row.className = 'ep-row';
-    row.innerHTML =
-      '<span class="badge '+(item.post?'badge-post':'badge-get')+'">'+(item.post?'POST':'GET')+'</span>'+
-      '<span class="ep-path">'+esc(pm)+(qs?'<em>'+esc(qs)+'</em>':'')+'</span>'+
-      '<span class="ep-arr">›</span>';
-    body.appendChild(row);
-
-    ;(function(it,idx){ row.addEventListener('click',function(){ openSheet(it,idx); }); })(item, ci+1);
+/* ══ TOKENIZER */
+function tokenize(v,d){
+  d=d||0;
+  if(v===null)             return '<span class="j-null">null</span>';
+  if(typeof v==='boolean') return '<span class="j-bool">'+v+'</span>';
+  if(typeof v==='number')  return '<span class="j-num">'+v+'</span>';
+  if(typeof v==='string')  return '<span class="j-str">"'+esc(v)+'"</span>';
+  if(Array.isArray(v)){
+    if(!v.length) return '<span class="j-punc">[]</span>';
+    const ind='  '.repeat(d+1);
+    const items=v.map(function(x){return ind+tokenize(x,d+1);});
+    return '<span class="j-punc">[</span>\n'+items.join('<span class="j-punc">,</span>\n')+'\n'+'  '.repeat(d)+'<span class="j-punc">]</span>';
+  }
+  const keys=Object.keys(v);
+  if(!keys.length) return '<span class="j-punc">{}</span>';
+  const ind='  '.repeat(d+1);
+  const items=keys.map(function(k){
+    return ind+'<span class="j-key">"'+esc(k)+'"</span><span class="j-punc">: </span>'+tokenize(v[k],d+1);
   });
-});
+  return '<span class="j-punc">{</span>\n'+items.join('<span class="j-punc">,</span>\n')+'\n'+'  '.repeat(d)+'<span class="j-punc">}</span>';
+}
 
-/* ══ OPEN SHEET */
-let curItem = null;
+/* ══ JSON VIEWER FUNCTIONS */
+function clearJson(){
+  lastJson=null;
+  document.getElementById('jsonEmpty').style.display='flex';
+  document.getElementById('jsonPre').style.display='none';
+  document.getElementById('jsonEndpoint').style.display='none';
+  document.getElementById('jsonStatusRow').style.display='none';
+}
 
-function openSheet(item, idx){
-  curItem = item;
-  document.getElementById('sh-num').textContent = String(idx).padStart(2,'0');
+function renderJson(data,method,path,ms,code,imgUrl){
+  lastJson=data;
+  document.getElementById('jsonEmpty').style.display='none';
+  document.getElementById('jsonPre').style.display='flex';
+  document.getElementById('jsonEndpoint').style.display='flex';
+  document.getElementById('jsonStatusRow').style.display='flex';
 
-  const isPost = item.post;
-  const mEl = document.getElementById('sh-method');
-  mEl.textContent = isPost ? 'POST' : 'GET';
-  mEl.className = 'sh-method '+(isPost?'post':'get');
+  const mEl=document.getElementById('jsonMethod');
+  mEl.textContent=method; mEl.className='json-method '+method.toLowerCase();
+  const qi=path.indexOf('?');
+  const pm=qi!==-1?path.slice(0,qi):path;
+  const qs=qi!==-1?path.slice(qi):'';
+  document.getElementById('jsonPath').innerHTML=esc(pm)+(qs?'<em>'+esc(qs)+'</em>':'');
+  document.getElementById('jsonTiming').textContent=ms?ms+'ms':'—ms';
 
-  const qi = item.path.indexOf('?');
-  const pm = qi!==-1 ? item.path.slice(0,qi) : item.path;
-  const qs = qi!==-1 ? item.path.slice(qi) : '';
-  document.getElementById('sh-path').innerHTML = esc(pm)+(qs?'<em>'+esc(qs)+'</em>':'');
+  const isOk=code>=200&&code<300&&data.status!==false;
+  const sr=document.getElementById('jsonStatusRow');
+  sr.className='json-status-row '+(isOk?'ok':'err');
+  sr.style.display='flex';
+  document.getElementById('jsonStatusTxt').textContent=isOk?code+' OK':code+' Error';
+  document.getElementById('jsonStatusCode').textContent=code;
 
-  // build params
-  const pc = document.getElementById('sh-params');
-  pc.innerHTML = '';
-  let any = false;
-
-  if(item.paramsFile){
-    item.paramsFile.forEach(function(obj){
-      Object.keys(obj).forEach(function(k){ any=true; pc.appendChild(mkFile(k)); });
-    });
+  if(imgUrl){
+    document.getElementById('jsonCode').innerHTML='<img src="'+imgUrl+'" style="max-width:100%;border-radius:8px;display:block;"/>';
+    document.getElementById('jsonLines').innerHTML='';
+  } else {
+    const lines=tokenize(data,0).split('\n');
+    document.getElementById('jsonLines').innerHTML=
+      lines.map(function(_,i){return '<span class="json-line-num">'+(i+1)+'</span>';}).join('');
+    document.getElementById('jsonCode').innerHTML=lines.join('\n');
   }
-  if(item.paramsPost){
-    item.paramsPost.forEach(function(obj){
-      Object.keys(obj).forEach(function(k){ any=true; pc.appendChild(mkText(k,'post')); });
-    });
-  }
-  if(!item.post && qi!==-1){
-    item.path.slice(qi+1).split('&').forEach(function(p){
-      const k=p.split('=')[0]; if(!k) return;
-      any=true; pc.appendChild(mkText(k,'query'));
-    });
-  }
-  if(!any){
-    const d=document.createElement('div');
-    d.className='no-params'; d.textContent='Tidak ada params';
-    pc.appendChild(d);
-  }
-
-  // reset json viewer
-  clearJson();
-
-  document.getElementById('overlay').classList.add('active');
-  document.getElementById('sheet').classList.add('active');
   document.getElementById('jsonScroll').scrollTop=0;
 }
 
+async function copyJson(){
+  if(!lastJson) return;
+  const btn=document.getElementById('copyBtn');
+  try{
+    await navigator.clipboard.writeText(JSON.stringify(lastJson,null,2));
+    btn.textContent='Copied ✓'; btn.classList.add('copied');
+    setTimeout(function(){btn.textContent='Copy';btn.classList.remove('copied');},2000);
+  }catch(e){}
+}
+
+/* ══ PARAM ROW BUILDERS */
 function mkText(key,dtype){
   const row=document.createElement('div'); row.className='p-row';
   const lbl=document.createElement('div'); lbl.className='p-key'; lbl.textContent=key;
@@ -471,13 +465,57 @@ function mkFile(key){
   return row;
 }
 
-/* ══ CLOSE */
-document.getElementById('overlay').addEventListener('click',function(){
-  document.getElementById('overlay').classList.remove('active');
-  document.getElementById('sheet').classList.remove('active');
-});
+/* ══ OPEN SHEET */
+let curItem = null;
 
-/* ══ FETCH */
+function openSheet(item, idx){
+  curItem = item;
+  document.getElementById('sh-num').textContent = String(idx).padStart(2,'0');
+
+  const isPost = item.post;
+  const mEl = document.getElementById('sh-method');
+  mEl.textContent = isPost ? 'POST' : 'GET';
+  mEl.className = 'sh-method '+(isPost?'post':'get');
+
+  const qi = item.path.indexOf('?');
+  const pm = qi!==-1 ? item.path.slice(0,qi) : item.path;
+  const qs = qi!==-1 ? item.path.slice(qi) : '';
+  document.getElementById('sh-path').innerHTML = esc(pm)+(qs?'<em>'+esc(qs)+'</em>':'');
+
+  const pc = document.getElementById('sh-params');
+  pc.innerHTML = '';
+  let any = false;
+
+  if(item.paramsFile){
+    item.paramsFile.forEach(function(obj){
+      Object.keys(obj).forEach(function(k){ any=true; pc.appendChild(mkFile(k)); });
+    });
+  }
+  if(item.paramsPost){
+    item.paramsPost.forEach(function(obj){
+      Object.keys(obj).forEach(function(k){ any=true; pc.appendChild(mkText(k,'post')); });
+    });
+  }
+  if(!item.post && qi!==-1){
+    item.path.slice(qi+1).split('&').forEach(function(p){
+      const k=p.split('=')[0]; if(!k) return;
+      any=true; pc.appendChild(mkText(k,'query'));
+    });
+  }
+  if(!any){
+    const d=document.createElement('div');
+    d.className='no-params'; d.textContent='Tidak ada params';
+    pc.appendChild(d);
+  }
+
+  clearJson();
+
+  document.getElementById('overlay').classList.add('active');
+  document.getElementById('sheet').classList.add('active');
+  document.getElementById('jsonScroll').scrollTop=0;
+}
+
+/* ══ FETCH HANDLER */
 document.getElementById('sh-fetch').addEventListener('click', async function(){
   if(!curItem) return;
   const btn=document.getElementById('sh-fetch');
@@ -536,89 +574,75 @@ document.getElementById('sh-fetch').addEventListener('click', async function(){
   }
 });
 
-/* ══ JSON VIEWER — exact ref logic */
-function renderJson(data,method,path,ms,code,imgUrl){
-  lastJson=data;
-  document.getElementById('jsonEmpty').style.display='none';
-  document.getElementById('jsonPre').style.display='flex';
-  document.getElementById('jsonEndpoint').style.display='flex';
-  document.getElementById('jsonStatusRow').style.display='flex';
+/* ══ CLOSE SHEET */
+document.getElementById('overlay').addEventListener('click',function(){
+  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('sheet').classList.remove('active');
+});
 
-  const mEl=document.getElementById('jsonMethod');
-  mEl.textContent=method; mEl.className='json-method '+method.toLowerCase();
-  const qi=path.indexOf('?');
-  const pm=qi!==-1?path.slice(0,qi):path;
-  const qs=qi!==-1?path.slice(qi):'';
-  document.getElementById('jsonPath').innerHTML=esc(pm)+(qs?'<em>'+esc(qs)+'</em>':'');
-  document.getElementById('jsonTiming').textContent=ms?ms+'ms':'—ms';
+/* ══ RENDER ENDPOINTS FROM /endpoint */
+async function loadAndRender() {
+  try {
+    const response = await fetch('/endpoint');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    
+    // ambil endpoints (support both formats)
+    const endpointsData = data.endpoints || data;
+    API = endpointsData;
+    
+    const listEl = document.getElementById('ep-list');
+    if (!listEl) return;
+    
+    API.forEach(function(cat, ci){
+      const card = document.createElement('div');
+      card.className = 'card a'+(ci+2 <= 3 ? ci+2 : 3);
 
-  const isOk=code>=200&&code<300&&data.status!==false;
-  const sr=document.getElementById('jsonStatusRow');
-  sr.className='json-status-row '+(isOk?'ok':'err');
-  sr.style.display='flex';
-  document.getElementById('jsonStatusTxt').textContent=isOk?code+' OK':code+' Error';
-  document.getElementById('jsonStatusCode').textContent=code;
+      const num = String(ci+1).padStart(2,'0');
+      card.innerHTML =
+        '<div class="card-head">'+
+          '<div class="card-label"><span class="label-num">'+num+'</span> '+cat.name+'</div>'+
+        '</div>'+
+        '<div class="card-body" id="cat-body-'+ci+'"></div>';
+      listEl.appendChild(card);
 
-  if(imgUrl){
-    // image response
-    document.getElementById('jsonCode').innerHTML='<img src="'+imgUrl+'" style="max-width:100%;border-radius:8px;display:block;"/>';
-    document.getElementById('jsonLines').innerHTML='';
-  } else {
-    const lines=tokenize(data,0).split('\n');
-    document.getElementById('jsonLines').innerHTML=
-      lines.map(function(_,i){return '<span class="json-line-num">'+(i+1)+'</span>';}).join('');
-    document.getElementById('jsonCode').innerHTML=lines.join('\n');
+      const body = card.querySelector('#cat-body-'+ci);
+      cat.items.forEach(function(item){
+        const qi = item.path.indexOf('?');
+        const pm = qi!==-1 ? item.path.slice(0,qi) : item.path;
+        const qs = qi!==-1 ? item.path.slice(qi) : '';
+
+        const row = document.createElement('div');
+        row.className = 'ep-row';
+        row.innerHTML =
+          '<span class="badge '+(item.post?'badge-post':'badge-get')+'">'+(item.post?'POST':'GET')+'</span>'+
+          '<span class="ep-path">'+esc(pm)+(qs?'<em>'+esc(qs)+'</em>':'')+'</span>'+
+          '<span class="ep-arr">›</span>';
+        body.appendChild(row);
+
+        (function(it,idx){ row.addEventListener('click',function(){ openSheet(it,idx); }); })(item, ci+1);
+      });
+    });
+  } catch (error) {
+    console.error('Gagal load /endpoint:', error);
+    const listEl = document.getElementById('ep-list');
+    if (listEl) {
+      listEl.innerHTML = '<div class="card" style="padding:40px;text-align:center;color:var(--red);border-color:var(--red)">' +
+        '<div>❌ Gagal memuat endpoint</div>' +
+        '<div style="font-size:11px;margin-top:12px;font-family:monospace">' + error.message + '</div>' +
+        '<div style="font-size:10px;margin-top:8px;color:var(--fg3)">Pastikan server menyediakan /endpoint</div>' +
+        '</div>';
+    }
   }
-  document.getElementById('jsonScroll').scrollTop=0;
 }
-
-function clearJson(){
-  lastJson=null;
-  document.getElementById('jsonEmpty').style.display='flex';
-  document.getElementById('jsonPre').style.display='none';
-  document.getElementById('jsonEndpoint').style.display='none';
-  document.getElementById('jsonStatusRow').style.display='none';
-}
-
-async function copyJson(){
-  if(!lastJson) return;
-  const btn=document.getElementById('copyBtn');
-  try{
-    await navigator.clipboard.writeText(JSON.stringify(lastJson,null,2));
-    btn.textContent='Copied ✓'; btn.classList.add('copied');
-    setTimeout(function(){btn.textContent='Copy';btn.classList.remove('copied');},2000);
-  }catch(e){}
-}
-
-/* ══ TOKENIZER */
-function tokenize(v,d){
-  d=d||0;
-  if(v===null)             return '<span class="j-null">null</span>';
-  if(typeof v==='boolean') return '<span class="j-bool">'+v+'</span>';
-  if(typeof v==='number')  return '<span class="j-num">'+v+'</span>';
-  if(typeof v==='string')  return '<span class="j-str">"'+esc(v)+'"</span>';
-  if(Array.isArray(v)){
-    if(!v.length) return '<span class="j-punc">[]</span>';
-    const ind='  '.repeat(d+1);
-    const items=v.map(function(x){return ind+tokenize(x,d+1);});
-    return '<span class="j-punc">[</span>\n'+items.join('<span class="j-punc">,</span>\n')+'\n'+'  '.repeat(d)+'<span class="j-punc">]</span>';
-  }
-  const keys=Object.keys(v);
-  if(!keys.length) return '<span class="j-punc">{}</span>';
-  const ind='  '.repeat(d+1);
-  const items=keys.map(function(k){
-    return ind+'<span class="j-key">"'+esc(k)+'"</span><span class="j-punc">: </span>'+tokenize(v[k],d+1);
-  });
-  return '<span class="j-punc">{</span>\n'+items.join('<span class="j-punc">,</span>\n')+'\n'+'  '.repeat(d)+'<span class="j-punc">}</span>';
-}
-
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function reEsc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
 /* ══ INIT */
-document.addEventListener('DOMContentLoaded',function(){
-  document.getElementById('loader').classList.add('out');
-  document.getElementById('yr').textContent=new Date().getFullYear();
+document.addEventListener('DOMContentLoaded', function(){
+  loadAndRender();
+  setTimeout(function(){
+    document.getElementById('loader').classList.add('out');
+  }, 500);
+  document.getElementById('yr').textContent = new Date().getFullYear();
 });
 </script>
 </body>
