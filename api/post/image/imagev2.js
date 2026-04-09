@@ -21,7 +21,11 @@ module.exports = {
                     return res.status(400).json({ error: 'Image is required' });
                 }
                 const buffer = req.file.buffer;
-                return { buffer, message, message2 };
+                return res.status(200).json({
+                    buffer,
+                    message,
+                    message2
+                });
             } catch (error) {
                 res.status(500).json({ error: error.message });
             }
