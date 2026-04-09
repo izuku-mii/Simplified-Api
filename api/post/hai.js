@@ -1,15 +1,23 @@
-const multer = require('multer');
-
-const upload = multer({
-    storage: multer.memoryStorage()
-});
-
 module.exports = {
     category: 'post',
-    path: true,
     post: true,
-    paramsFile: { message: 'halo" },
+    paramsPost: {
+        message: "halo",
+        model: "gpt"
+    },
     async run(req, res) {
-        return "hello"
+        try {
+            const { message, model } = req.body;
+
+            return res.json({
+                message,
+                model
+            });
+
+        } catch (err) {
+            return res.status(500).json({
+                error: err.message
+            });
+        }
     }
 };
