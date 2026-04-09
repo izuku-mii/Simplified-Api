@@ -352,25 +352,9 @@ footer{background:var(--card);border-top:1px solid var(--border2);position:relat
 
 <script>
 /* ══ DATA */
-const API = {
-  endpoints:[
-    {name:"AI",    items:[
-      {path:"/ai/hydromind-logic?text=&logic=", post:false},
-      {path:"/ai/hydromind?text=&model=",       post:false}
-    ]},
-    {name:"Post",  items:[
-      {path:"/post/image/tes", post:true, paramsFile:[{image:null}]}
-    ]},
-    {name:"Random",items:[
-      {path:"/random/bluearchive", post:false},
-      {path:"/random/loli",        post:false}
-    ]},
-    {name:"Search",items:[
-      {path:"/search/youtube?q=", post:false}
-    ]}
-  ]
-};
-
+const jsonEnd = await fetch('/endpoint');
+const { endpoints } = await jsonEnd.json();
+const API = endpoints
 /* ══ BUILD LIST */
 const listEl = document.getElementById('ep-list');
 let lastJson = null;
