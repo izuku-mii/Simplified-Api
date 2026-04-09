@@ -14,11 +14,8 @@
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
     app.use(require('./lib/logApiRequest'));
-
-    // static assets
-    app.use('/assets', express.static(path.join(process.cwd(), 'assent')));
-
-    // middleware response formatter
+    app.use('/', express.static(path.join(__dirname, 'html')));
+    app.use('/assets', express.static(path.join(__dirname, 'assets')))
     app.use((req, res, next) => {
         const originalJson = res.json;
 
