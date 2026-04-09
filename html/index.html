@@ -360,7 +360,7 @@ const listEl = document.getElementById('ep-list');
 let lastJson = null;
 let sheetIdx = 0;
 
-API.endpoints.forEach(function(cat, ci){
+API.forEach(function(cat, ci){
   const card = document.createElement('div');
   card.className = 'card a'+(ci+2 <= 3 ? ci+2 : 3);
 
