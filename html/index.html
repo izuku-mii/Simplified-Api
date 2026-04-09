@@ -4,6 +4,26 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>BASE-SIMPLE — API</title>
+
+<!-- ══ FAVICON -->
+<!-- icon tanpa background (transparent) -->
+<link rel="icon" type="image/jpeg" href="/assets/icon.jpg" id="fav-default"/>
+<!-- apple touch icon (dengan background, iOS tidak support transparent) -->
+<link rel="apple-touch-icon" href="/assets/icon-bg.jpg" id="fav-apple"/>
+
+<!-- ══ OG / PREVIEW META -->
+<meta name="description" content="" id="meta-desc"/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="BASE-SIMPLE — API" id="og-title"/>
+<meta property="og:description" content="" id="og-desc"/>
+<meta property="og:image" content="/assets/banner.jpg" id="og-image"/>
+<meta property="og:image:width" content="1280"/>
+<meta property="og:image:height" content="720"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="BASE-SIMPLE — API" id="tw-title"/>
+<meta name="twitter:description" content="" id="tw-desc"/>
+<meta name="twitter:image" content="/assets/banner.jpg" id="tw-image"/>
+
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
@@ -639,7 +659,7 @@ function mkText(key,dtype){
   const lbl=document.createElement('div');lbl.className='p-key';lbl.textContent=key;
   const shell=document.createElement('div');shell.className='input-shell';
   const inp=document.createElement('input');
-  inp.className='p-input';inp.placeholder='kata kata...';
+  inp.className='p-input';inp.placeholder='no parameter';
   inp.type='text';inp.autocomplete='off';
   inp.dataset.key=key;inp.dataset.pt=dtype;
   shell.appendChild(inp);row.appendChild(lbl);row.appendChild(shell);
@@ -837,19 +857,57 @@ document.addEventListener('DOMContentLoaded',function(){
 
   document.getElementById('yr').textContent=new Date().getFullYear();
 
-  /* load setting.json untuk nama & author */
+  /* load setting.json untuk nama, author & desc */
   fetch('/assets/setting.json')
     .then(function(r){return r.json();})
     .then(function(s){
+      const origin=window.location.origin||'';
+      const pageTitle=(s.name||'BASE-SIMPLE')+' — API';
+
+      /* ── title & name ── */
       if(s.name){
         document.getElementById('footer-name').textContent=s.name;
         document.getElementById('hdr-title').textContent=s.name;
-        document.title=s.name+' — API';
+        document.title=pageTitle;
+        document.getElementById('og-title').setAttribute('content',pageTitle);
+        document.getElementById('tw-title').setAttribute('content',pageTitle);
       }
+
+      /* ── author ── */
       if(s.author){
         document.getElementById('footer-author').textContent=s.author;
         document.getElementById('hdr-author').textContent=s.author;
       }
+
+      /* ── desc ── */
+      if(s.desc){
+        document.getElementById('meta-desc').setAttribute('content',s.desc);
+        document.getElementById('og-desc').setAttribute('content',s.desc);
+        document.getElementById('tw-desc').setAttribute('content',s.desc);
+      }
+
+      /* ── og:url ── */
+      var ogUrl=document.getElementById('og-url');
+      if(!ogUrl){
+        ogUrl=document.createElement('meta');
+        ogUrl.id='og-url';
+        ogUrl.setAttribute('property','og:url');
+        document.head.appendChild(ogUrl);
+      }
+      ogUrl.setAttribute('content',origin+'/');
+
+      /* ── og:image absolute url ── */
+      var imgAbs=origin+'/assets/banner.jpg';
+      document.getElementById('og-image').setAttribute('content',imgAbs);
+      document.getElementById('tw-image').setAttribute('content',imgAbs);
+
+      /* ── favicon: pilih icon-bg.jpg jika ada, fallback icon.jpg ── */
+      fetch('/assets/icon.jpg',{method:'HEAD'})
+        .then(function(res){
+          if(res.ok){
+            document.getElementById('fav-apple').setAttribute('href',origin+'/assets/icon.jpg');
+          }
+        }).catch(function(){});
     })
     .catch(function(){});
 
