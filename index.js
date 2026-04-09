@@ -18,29 +18,25 @@
         res.json = async function (data) {
             if (data && typeof data === 'object') {
                 const statusCode = res.statusCode || 200;
-
                 let author = 'unknown';
                 try {
                     const json = JSON.parse(
                         fs.readFileSync(
-                            path.join(process.cwd(), 'assent/setting.json')
+                            path.join(process.cwd(), 'assets/setting.json')
                         )
                     );
                     author = json.author;
                 } catch (e) {
                     logger.warn('Failed read setting.json');
                 }
-
                 const responseData = {
                     statusCode: statusCode,
                     creator: author,
                     ...data,
                     timestamp: new Date().toISOString()
                 };
-
                 return originalJson.call(this, responseData);
             }
-
             return originalJson.call(this, data);
         };
         next();
