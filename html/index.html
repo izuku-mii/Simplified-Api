@@ -26,7 +26,7 @@
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px;}
 html{scroll-behavior:smooth;}
-body{background:var(--bg);color:var(--fg);font-family:var(--ff-body);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.6;min-height:100vh;}
+body{background:var(--bg);color:var(--fg);font-family:var(--ff-body);-webkit-font-smoothing:antialiased;overflow-x:clip;line-height:1.6;min-height:100vh;}
 
 /* ══ GRID BG */
 .grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -242,6 +242,31 @@ header{position:sticky;top:0;z-index:200;background:rgba(7,21,16,0.88);backdrop-
 .json-empty-hint{font-family:var(--ff-mono);font-size:9px;color:var(--fg3);letter-spacing:1px;background:var(--card2);border:1px solid var(--border2);border-radius:6px;padding:5px 14px;text-transform:uppercase;}
 .json-empty-hint::before{content:'$ ';color:var(--primary);}
 
+
+/* ══ TAB RESPONSE / BODY */
+.tab-bar{display:flex;background:var(--bg);border:1px solid var(--border2);border-radius:10px;margin:0 18px 0;overflow:hidden;}
+.tab-btn{flex:1;padding:10px 0;font-family:var(--ff-mono);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--fg3);background:transparent;border:none;cursor:pointer;transition:all .2s;}
+.tab-btn.active{background:var(--card2);color:var(--fg);border-radius:8px;}
+.tab-btn:hover:not(.active){color:var(--fg2);}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+
+/* ══ CURL VIEWER */
+.curl-wrap{margin:10px 18px 18px;}
+.curl-scroll{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;max-height:320px;overflow-y:auto;overflow-x:auto;position:relative;}
+.curl-scroll::-webkit-scrollbar{width:3px;}
+.curl-scroll::-webkit-scrollbar-thumb{background:var(--border2);}
+.curl-pre{font-family:var(--ff-mono);font-size:11px;color:var(--j-str);padding:14px 16px;white-space:pre;line-height:1.75;}
+.curl-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;gap:10px;text-align:center;}
+.curl-empty-icon{font-family:var(--ff-disp);font-size:44px;color:var(--fg3);opacity:.2;letter-spacing:2px;}
+.curl-empty-text{font-family:var(--ff-mono);font-size:10px;color:var(--fg3);}
+.curl-empty-hint{font-family:var(--ff-mono);font-size:9px;color:var(--fg3);letter-spacing:1px;background:var(--card2);border:1px solid var(--border2);border-radius:6px;padding:5px 14px;text-transform:uppercase;}
+.curl-empty-hint::before{content:'$ ';color:var(--primary);}
+.curl-copy-row{display:flex;justify-content:flex-end;padding:0 18px 10px;}
+.curl-copy-btn{font-family:var(--ff-mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--fg3);background:var(--card2);border:1px solid var(--border2);border-radius:6px;padding:4px 12px;cursor:pointer;transition:all .18s;}
+.curl-copy-btn:hover{color:var(--fg);border-color:var(--fg3);}
+.curl-copy-btn.copied{color:var(--primary);border-color:rgba(45,189,126,.35);}
+
 /* ══ FOOTER */
 hr.sep{border:none;border-top:1px solid var(--border2);max-width:1200px;margin:0 auto;}
 footer{background:var(--card);border-top:1px solid var(--border2);position:relative;z-index:10;}
@@ -368,40 +393,75 @@ footer{background:var(--card);border-top:1px solid var(--border2);position:relat
 
   <hr class="s-divider"/>
 
-  <!-- json response — exact ref structure -->
-  <div class="json-card" style="margin:0;border:none;border-radius:0;background:transparent;">
-    <div class="json-header">
-      <div class="json-label">
-        <span class="json-label-num">&#60;/&#62;</span>
-        response
-      </div>
-      <div class="json-actions">
-        <button class="json-btn" id="copyBtn" onclick="copyJson()">Copy</button>
-      </div>
-    </div>
+  <!-- TAB BAR: RESPONSE / BODY -->
+  <div style="height:14px"></div>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-response" onclick="switchTab('response')">RESPONSE</button>
+    <button class="tab-btn" id="tab-body" onclick="switchTab('body')">BODY</button>
+  </div>
+  <div style="height:10px"></div>
 
-    <div class="json-endpoint" id="jsonEndpoint">
-      <span class="json-method" id="jsonMethod">GET</span>
-      <span class="json-path"   id="jsonPath"></span>
-      <span class="json-timing" id="jsonTiming">—ms</span>
-    </div>
-
-    <div class="json-status-row" id="jsonStatusRow">
-      <span class="json-status-dot"></span>
-      <span id="jsonStatusTxt"></span>
-      <span class="json-status-code" id="jsonStatusCode"></span>
-    </div>
-
-    <div class="json-body">
-      <div class="json-scroll" id="jsonScroll">
-        <div class="json-empty" id="jsonEmpty">
-          <div class="json-empty-icon">{ }</div>
-          <div class="json-empty-text">Belum ada response</div>
-          <div class="json-empty-hint">klik endpoint lalu fetch</div>
+  <!-- TAB PANE: RESPONSE (json viewer) -->
+  <div class="tab-pane active" id="pane-response">
+    <div class="json-card" style="margin:0;border:none;border-radius:0;background:transparent;">
+      <div class="json-header">
+        <div class="json-label">
+          <span class="json-label-num">&#60;/&#62;</span>
+          response
         </div>
-        <div class="json-pre" id="jsonPre" style="display:none">
-          <div class="json-lines" id="jsonLines"></div>
-          <div class="json-code"  id="jsonCode"></div>
+        <div class="json-actions">
+          <button class="json-btn" id="copyBtn" onclick="copyJson()">Copy</button>
+        </div>
+      </div>
+
+      <div class="json-endpoint" id="jsonEndpoint">
+        <span class="json-method" id="jsonMethod">GET</span>
+        <span class="json-path"   id="jsonPath"></span>
+        <span class="json-timing" id="jsonTiming">—ms</span>
+      </div>
+
+      <div class="json-status-row" id="jsonStatusRow">
+        <span class="json-status-dot"></span>
+        <span id="jsonStatusTxt"></span>
+        <span class="json-status-code" id="jsonStatusCode"></span>
+      </div>
+
+      <div class="json-body">
+        <div class="json-scroll" id="jsonScroll">
+          <div class="json-empty" id="jsonEmpty">
+            <div class="json-empty-icon">{ }</div>
+            <div class="json-empty-text">Belum ada response</div>
+            <div class="json-empty-hint">klik endpoint lalu fetch</div>
+          </div>
+          <div class="json-pre" id="jsonPre" style="display:none">
+            <div class="json-lines" id="jsonLines"></div>
+            <div class="json-code"  id="jsonCode"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB PANE: BODY (curl) -->
+  <div class="tab-pane" id="pane-body">
+    <div class="json-card" style="margin:0;border:none;border-radius:0;background:transparent;">
+      <div class="json-header">
+        <div class="json-label">
+          <span class="json-label-num">$_</span>
+          curl
+        </div>
+        <div class="json-actions">
+          <button class="curl-copy-btn" id="curlCopyBtn" onclick="copyCurl()">Copy</button>
+        </div>
+      </div>
+      <div class="curl-wrap">
+        <div class="curl-scroll">
+          <div class="curl-empty" id="curlEmpty">
+            <div class="curl-empty-icon">{ }</div>
+            <div class="curl-empty-text">Belum ada curl</div>
+            <div class="curl-empty-hint">isi params lalu fetch</div>
+          </div>
+          <pre class="curl-pre" id="curlPre" style="display:none"></pre>
         </div>
       </div>
     </div>
@@ -428,7 +488,86 @@ footer{background:var(--card);border-top:1px solid var(--border2);position:relat
 /* ══ DATA */
 let API = [];
 let lastJson = null;
+let lastCurl = null;
 let sheetIdx = 0;
+
+/* ══ TAB SWITCH */
+function switchTab(tab){
+  document.getElementById('tab-response').classList.toggle('active', tab==='response');
+  document.getElementById('tab-body').classList.toggle('active', tab==='body');
+  document.getElementById('pane-response').classList.toggle('active', tab==='response');
+  document.getElementById('pane-body').classList.toggle('active', tab==='body');
+}
+
+/* ══ BUILD CURL */
+function buildCurl(item, origin){
+  const isPost = item.post;
+  let ep = item.path;
+
+  /* resolve GET query params from inputs */
+  if(!isPost){
+    document.querySelectorAll('#sh-params [data-pt="query"]').forEach(function(inp){
+      ep=ep.replace(new RegExp('('+reEsc(inp.dataset.key)+'=)[^&]*'),'$1'+encodeURIComponent(inp.value));
+    });
+    const imgP=[];
+    document.querySelectorAll('#sh-params [data-pt="imageurl"]').forEach(function(inp){
+      if(inp.value) imgP.push(encodeURIComponent(inp.dataset.key)+'='+encodeURIComponent(inp.value));
+    });
+    if(imgP.length) ep+=(ep.includes('?')?'&':'?')+imgP.join('&');
+    return 'curl -X GET "'+origin+ep+'"';
+  }
+
+  /* POST with file → multipart */
+  const fileInputs = document.querySelectorAll('#sh-params [data-pt="file"]');
+  if(item.paramsFile && item.paramsFile.length){
+    let curl = 'curl -X POST "'+origin+ep+'"';
+    fileInputs.forEach(function(inp){
+      const fname = (inp.files&&inp.files[0]) ? inp.files[0].name : '<file>';
+      curl += ' \
+  -F "'+inp.dataset.key+'=@'+fname+'"';
+    });
+    document.querySelectorAll('#sh-params [data-pt="post"]').forEach(function(inp){
+      curl += ' \
+  -F "'+inp.dataset.key+'='+inp.value+'"';
+    });
+    return curl;
+  }
+
+  /* POST json */
+  const body={};
+  document.querySelectorAll('#sh-params [data-pt="post"]').forEach(function(inp){
+    body[inp.dataset.key]=inp.value;
+  });
+  return 'curl -X POST "'+origin+ep+'" \
+  -H "Content-Type: application/json" \
+  -d ''+JSON.stringify(body,null,2)+''';
+}
+
+/* ══ COPY CURL */
+async function copyCurl(){
+  if(!lastCurl) return;
+  const btn=document.getElementById('curlCopyBtn');
+  try{
+    await navigator.clipboard.writeText(lastCurl);
+    btn.textContent='Copied ✓'; btn.classList.add('copied');
+    setTimeout(function(){btn.textContent='Copy';btn.classList.remove('copied');},2000);
+  }catch(e){}
+}
+
+/* ══ RENDER CURL */
+function renderCurl(curl){
+  lastCurl=curl;
+  document.getElementById('curlEmpty').style.display='none';
+  document.getElementById('curlPre').style.display='block';
+  document.getElementById('curlPre').textContent=curl;
+}
+
+function clearCurl(){
+  lastCurl=null;
+  document.getElementById('curlEmpty').style.display='flex';
+  document.getElementById('curlPre').style.display='none';
+  document.getElementById('curlPre').textContent='';
+}
 
 /* ══ HELPER */
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -463,6 +602,7 @@ function clearJson(){
   document.getElementById('jsonPre').style.display='none';
   document.getElementById('jsonEndpoint').style.display='none';
   document.getElementById('jsonStatusRow').style.display='none';
+  clearCurl();
 }
 
 function renderJson(data,method,path,ms,code,imgUrl){
@@ -570,11 +710,19 @@ function openSheet(item, idx){
       Object.keys(obj).forEach(function(k){ any=true; pc.appendChild(mkText(k,'post')); });
     });
   }
+  if(item.paramsQuery){
+    item.paramsQuery.forEach(function(obj){
+      Object.keys(obj).forEach(function(k){ any=true; pc.appendChild(mkText(k,'query')); });
+    });
+  }
   if(!item.post && qi!==-1){
     item.path.slice(qi+1).split('&').forEach(function(p){
       const k=p.split('=')[0]; if(!k) return;
       any=true; pc.appendChild(mkText(k,'query'));
     });
+  }
+  if(!item.post && !any && /image/i.test(item.path)){
+    any=true; pc.appendChild(mkText('url','imageurl'));
   }
   if(!any){
     const d=document.createElement('div');
@@ -600,6 +748,9 @@ document.getElementById('sh-fetch').addEventListener('click', async function(){
   const origin=(window.location.origin&&window.location.origin!=='null')?window.location.origin:'';
   const t0=Date.now();
 
+  /* build curl preview before fetch */
+  renderCurl(buildCurl(curItem, origin));
+
   try{
     let r;
     if(!curItem.post){
@@ -607,6 +758,14 @@ document.getElementById('sh-fetch').addEventListener('click', async function(){
       document.querySelectorAll('#sh-params [data-pt="query"]').forEach(function(inp){
         ep=ep.replace(new RegExp('('+reEsc(inp.dataset.key)+'=)[^&]*'),'$1'+encodeURIComponent(inp.value));
       });
+      /* imageurl params — append as query string */
+      const imgParams=[];
+      document.querySelectorAll('#sh-params [data-pt="imageurl"]').forEach(function(inp){
+        if(inp.value) imgParams.push(encodeURIComponent(inp.dataset.key)+'='+encodeURIComponent(inp.value));
+      });
+      if(imgParams.length){
+        ep+=(ep.includes('?')?'&':'?')+imgParams.join('&');
+      }
       r=await fetch(origin+ep,{method:'GET'});
     } else if(curItem.paramsFile&&curItem.paramsFile.length){
       const fd=new FormData();
