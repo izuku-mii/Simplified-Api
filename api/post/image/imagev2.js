@@ -9,7 +9,7 @@ module.exports = {
     path: true,
     post: true,
     paramsFile: ["image"],
-    paramsPost: ["message", "message2"]
+    paramsPost: ["message", "message2"],
     async run(req, res) {
         const { message, message2 } = req.body;
         upload.single('image')(req, res, async (err) => {
